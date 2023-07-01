@@ -11,16 +11,25 @@ import json
 import random
 from textblob import TextBlob
 from datetime import datetime
+import time
 
 bot = commands.Bot(command_prefix='!',intents=discord.Intents.all())
+
 
 @bot.event
 async def on_ready():
 	print(f"\n{bot.user.name}!\n")
-	stream = discord.Streaming(name='Strawberry Sky By dz!', url='https://www.youtube.com/watch?v=i5Xmk-ciobo', platform='YouTube')
-	gen = bot.get_channel(1070872824685789266)
-	await bot.change_presence(activity=stream)
-	await gen.send("on")
+	playin = discord.Activity(name='Connect 4', type=discord.ActivityType.playing, details='lol')
+	gen = bot.get_channel(919055834611347536)
+	await bot.change_presence(activity=playin)
+
+	dzguild = bot.get_guild(539928737916125184)
+	dzrole = dzguild.get_role(824670964762804284)
+	while True:
+		await dzrole.edit(color=0xff3c3c)
+		await asyncio.sleep(2)
+		await dzrole.edit(color=0x00b0ff)
+		await asyncio.sleep(2)
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -57,14 +66,92 @@ async def ping(ctx):
 	if 1009 < pin:
 		status = "Something is terribly wrong."
 	await ctx.reply(f'**{round(bot.latency * 1000)}ms (`{status}`)**')
-	await ctx.message.delete()
+	if ctx.message.content == '!ping':
+		await ctx.message.delete()
+
 
 @bot.command()
-@commands.has_permissions(administrator=True)
-async def any(ctx):
-	vc = ctx.guild.get_channel(921039464934039583)
-	await vc.connect()
-	
+async def c4(ctx):
+	welcome = await ctx.send("**Working on it....**")
+	strints = ['1','2','3','4','5','6','7']
+	a = []
+	b = []
+	c = []
+	d = []
+	e = []
+	f = []
+	c4p1 = []
+	e1 = ['a1','a2','a3','a4']
+	strabcs = [a,b,c,d,e,f]
+	board = ''
+	c4em = bot.get_emoji(1120457978122862673)
+	c4r = bot.get_emoji(1120458381740757104)
+	for lets in strabcs:
+		for z in range(1,8):
+			board+=f'{c4em}'
+		board+='\n'
+		if lets is strabcs[-1]:
+			board+=':one::two::three::four::five::six::seven:'
+	await welcome.edit(content=f"Welcome to **__Connect 4__!** It's **your** turn!\n{board}")
+
+	while True:
+		message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
+		winint = 0
+		winind = ''
+		if message.content in strints:
+			resp = message.content
+			intav = 0
+			for let in strabcs:
+				if not resp in let:
+					c4p1.append(f"a{resp}")
+					intav+=1
+					let.append(resp)
+					strabcs = [a,b,c,d,e,f]
+					board = ''
+					strabcsr = strabcs[::-1]
+					for lett in strabcsr:
+						for q in range(1,8):
+							if str(q) in lett:
+								board+=f'{c4r}'
+							else:
+								board+=f'{c4em}'
+						board+='\n'
+						if lett is a:
+							board+=':one::two::three::four::five::six::seven:'
+						for g in e1:
+							if not g in c4p1:
+								winint-=1
+						if winint == 0:
+							winind = "**You win!**"
+					await ctx.send(f"{winind}\n{board}")
+					print(c4p1)
+				if intav > 0:
+					break
+				if let == strabcs[-1]:
+					if intav == 0:
+						await ctx.send(f"**__Try again!__\nThe `{resp}` slot is full already!**")
+						break
+
+@bot.command()
+async def idd(ctx):
+	try:
+		channel = ctx.author.voice.channel
+		await channel.connect()
+	except:
+		pass
+
+@bot.command()
+async def rain(ctx):
+	voice = ctx.guild.voice_client
+	voice.play(discord.FFmpegPCMAudio('C:\\Users\\dylan\\OneDrive\\Desktop\\suede\\rain.mp3'))
+
+		
+
+
+
+@bot.command()
+async def ids(ctx):
+	print(ctx.guild.id)
 
 
 @bot.command()
@@ -88,7 +175,6 @@ async def oy(ctx):
 	youngcr = youngc.strftime("%m-%d-20%y at %H:%M:%S")
 
 	await ctx.reply(f"**The oldest account in this server is <@{o}> ! (Created {oldcr})\nThe youngest account is <@{y}> ! (Created {youngcr})**")
-	print("done")
 
 
 # @bot.command()
