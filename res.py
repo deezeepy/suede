@@ -13,7 +13,7 @@ from textblob import TextBlob
 class Res(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
-	
+
 	@commands.Cog.listener()
 	async def on_message(self, message):
 		bad = ['nigg', 'fag']
@@ -54,7 +54,7 @@ class Res(commands.Cog):
 			ver = self.bot.get_channel(payload.channel_id)
 			verication = await ver.fetch_message(payload.message_id)
 			await verication.remove_reaction("<:starGold:917963838496845845>", payload.member)
-		
+
 		if str(payload.emoji) == '<:starGold:917963838496845845>':
 			# try:
 			channel = self.bot.get_channel(payload.channel_id)
@@ -84,4 +84,12 @@ class Res(commands.Cog):
 		if after.self_deaf is False:
 			if before.self_deaf is True:
 				print(member, 'muted himself')
-		
+	@commands.Cog.listener()
+	async def on_member_join(self, member):
+		dzserver = self.bot.get_guild(539928737916125184)
+		memberrole = dzserver.get_role(922825084337532939)
+		await member.add_roles(memberrole)
+		jgen = self.bot.get_channel(1070872824685789266)
+		await jgen.send(f"**Please welcome {member.mention} to the server!** [{len(member.guild.members)}]")
+
+
