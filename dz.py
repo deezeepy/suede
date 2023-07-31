@@ -11,10 +11,15 @@ import requests
 import json
 import random
 from textblob import TextBlob
-from datetime import datetime
+import datetime
 import time
 from traceback import print_exc
 import json
+import re
+from PIL import Image, ImageFont, ImageDraw, ImageOps
+from webcolors import hex_to_rgb
+import urllib.request
+
 
 bot = commands.Bot(command_prefix='!',intents=discord.Intents.all())
 
@@ -38,26 +43,33 @@ async def on_command_error(ctx, error):
 	if isinstance(error, commands.CommandOnCooldown):
 		msg = '**This command is still on cooldown for another __{:.2f} seconds__!**'.format(error.retry_after)
 		await ctx.send(msg)
-	if isinstance(error, commands.CommandNotFound):
+	elif isinstance(error, commands.CommandNotFound):
 		await ctx.send("**Error: `That command does not exist.`**")
-	if isinstance(error, commands.MissingRequiredArgument):
+	elif isinstance(error, commands.MissingRequiredArgument):
 		await ctx.send("**Error: `You are missing a part of your command.`**")
-	if isinstance(error, commands.MissingPermissions):
+	elif isinstance(error, commands.MissingPermissions):
 		await ctx.send("**Error: `That is an ADMIN command!`**")
-	if isinstance(error, commands.errors.ChannelNotFound):
+	elif isinstance(error, commands.errors.ChannelNotFound):
 		await ctx.send("**Error: `That channel doesn't exist.`**")
-	if isinstance(error, commands.errors.RoleNotFound):
+	elif isinstance(error, commands.errors.RoleNotFound):
 		await ctx.send("**Error: `Couldn't find role.`**")
-	if isinstance(error, commands.errors.TooManyArguments):
+	elif isinstance(error, commands.errors.TooManyArguments):
 		await ctx.send(f"**Error: `Unwanted details in command. ({error.args})`**")
-	if isinstance(error, commands.errors.UserNotFound):
+	elif isinstance(error, commands.errors.UserNotFound):
 		await ctx.send("**Error: `Couldn't find member.`**")
-	try:
-		await ctx.send(f"`{error}`")
-	except:
-		pass
+	elif isinstance(error, commands.errors.InvalidEndOfQuotedStringError):
+		await ctx.send("**Make sure that quotations are aren't touching other elements in your command.**")
+	else:
+		try:
+			print(error)
+			print(type(error))
+			await ctx.send(f"`{error}`")
+		except:
+			pass
+	print(error)
+	print(type(error))
 
-@bot.command()
+@bot.command(aliases=["p"])
 async def ping(ctx):
 	pin = round(bot.latency*1000)
 	if 0 < pin < 150:
@@ -68,34 +80,14 @@ async def ping(ctx):
 		status = "Yikes."
 	if 500 < pin < 900:
 		status = "Wayyy too slow."
-	if 1009 < pin:
+	if 1000 < pin:
 		status = "Something is terribly wrong."
 	await ctx.reply(f'**{round(bot.latency * 1000)}ms (`{status}`)**')
 	if ctx.message.content == '!ping':
 		await ctx.message.delete()
 
-@bot.command()
-@commands.is_owner()
-async def sayhi(ctx,victim:discord.Member):
-	await ctx.send(f"Say \"hi\", {victim}!")
-	message = await bot.wait_for('message', check=lambda message: message.author == victim)
-	if 'hi' in message.content:
-		await message.reply('thanks man!')
-	else:
-		await message.reply('that......that wasn\'t a \'hi\'')
-
 
 ###############################################################################
-
-
-@bot.command(pass_context=True)
-async def yat(ctx, numba:int):
-	addthree(numba)
-	print(numba)
-
-def addthree(numba):
-	numba+=3
-	print(numba)
 
 
 @bot.command()
@@ -116,7 +108,7 @@ async def tb(ctx, tbarg=None):
 		tbarg = ctx.guild.get_member_named(tbarg)
 		if tbarg is None:
 			print(f'couldn\'t find member')
-	
+
 	# await ctx.reply('<:yellowdollarsignyoutube:1130852475893715105>')
 	# while True:
 	# 	try:
@@ -131,9 +123,113 @@ async def tb(ctx, tbarg=None):
 	# 		print('boom, ur  now dead')
 	# 		break
 
+# @bot.command()
+# @commands.is_owner()
+# async def timer(ctx):
+# 	timerthen = datetime.datetime.now()
+# 	await ctx.reply("**Your timer has started!**")
+# 	while True:
+# 		timerstop = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
+# 		if timerstop.content == 'timer stop':
+# 			timerres = datetime.datetime.now()-timerthen
+# 			print(f"{timerres.min} minutes and {timerres.seconds}.{round(timerres.microseconds/10000)} seconds")
+# 			print(timerres.microseconds)
+# 			break
+
+@bot.command()
+@commands.is_owner()
+async def ds(ctx):
+	lyricschan = bot.get_channel(1134125877647655103)
+	lyricsrole = ctx.guild.get_role(1134132685447630859)
+	with open('lyrics.txt','r') as lyrics:
+		strlyrics = lyrics.read()
+		lyricssplit = strlyrics.splitlines()
+	await ctx.send("**Welcome to Discord Sings Barbie Girl by Aqua!**")
+	while True:
+		lyricsfinish = None
+		lyrics_role_members = lyricsrole.members
+		lyrics_role_members2 = lyricsrole.members
+		lyrics_singer_present = []
+		while True:
+			lyricsretry = await bot.wait_for('message', check=lambda message: message.channel == ctx.channel)
+			if lyricsretry.content.lower() == 'here':
+				if not lyricsretry.author.top_role == lyricsrole and not lyricsretry.author == ctx.author:
+					await lyricsretry.reply("**Sorry big guy, you can't take part in this with __Administrator__ perms.**")
+				elif lyricsretry.author in lyrics_singer_present:
+					await lyricsretry.reply("**You've already been added to queue.**")
+				else:
+					lyrics_singer_present.append(lyricsretry.author)
+					await lyricsretry.reply("**You've been added to the singer queue! Get ready!**")
+			if lyricsretry.content == 'START-SINGING' and lyricsretry.author == ctx.author:
+				break
+
+		if len(lyrics_singer_present) > 0:
+			lyrics_singer_liststr = ""
+			# lyrics_order_num = 1
+
+			for lyrics_role_member in lyrics_role_members:
+				if not lyrics_role_member in lyrics_singer_present:
+					lyrics_role_members2.remove(lyrics_role_member)
+				else:
+					lyrics_singer_liststr+=f"**{lyrics_role_members2.index(lyrics_role_member)+1}**. {lyrics_role_member.mention}\n"
+					# lyrics_order_num+=1
+
+			await ctx.send(f'**We are all set and ready to start in `15 seconds`! Get your script ready!\n\nThis** is the **singing order** for this round. It will **loop** until the final lyric.\n{lyrics_singer_liststr}\nWhen it is your turn, you have **`60 seconds`** to send the **next line of lyrics** in {lyricschan.mention}')
+			await asyncio.sleep(10)
+			for lyrics_CD in range(1,6):
+				await ctx.send(f"**Starting in {lyrics_CD}...**")
+				await asyncio.sleep(1)
+			await ctx.send("**Action!**")
+
+			lyric = -1
+			while True:
+				for lyric_singer in lyrics_role_members2:
+					print(lyric_singer)
+					lyric+=1
+					strlyric = lyricssplit[lyric]
+					if strlyric.startswith("*"):
+						await ctx.send(strlyric)
+						lyric+=1
+						strlyric = lyricssplit[lyric]
+
+					try:
+						await asyncio.sleep(0.5)
+						lyricsmsg = await bot.wait_for('message', check=lambda message: message.channel == ctx.channel, timeout=60)
+						await asyncio.sleep(0.5)
+						sstrlyric = strlyric
+						strlyric = "".join(re.findall("[a-zA-Z]+",strlyric.lower()))
+						lyricsmsg.content = "".join(re.findall("[a-zA-Z]+",lyricsmsg.content.lower()))
+
+					except asyncio.TimeoutError:
+						lyricsfinish = False
+						await ctx.send(f"**{lyricsmsg.author.mention} took too long (`60 seconds`) and was banned.**")
+						break
+					print(strlyric)
+					print(lyricsmsg.content, '\n')
+					if not lyricsmsg.author == lyric_singer:
+						lyricsfinish = False
+						await lyricsmsg.author.remove_roles(lyricsrole)
+						await ctx.send(f"**{lyricsmsg.author.mention} was banned.\n\n*It was {lyric_singer.mention}'s turn!***")
+						break
+					elif not strlyric in lyricsmsg.content:
+						lyricsfinish = False
+						await lyricsmsg.author.remove_roles(lyricsrole)
+						await ctx.send(f"**{lyricsmsg.author.mention} was banned.\n\nHe was supposed to say:**\n *\" {sstrlyric} \"*")
+						break
+					elif strlyric in lyricsmsg.content and strlyric == 'ohiloveyouken':
+						lyricsfinish = True
+						break
+				if lyricsfinish is False:
+					break
+		if lyricsfinish is True:
+			break
+	await ctx.send("**THAT'S A WRAP!! :clap: :clap: :clap:**")
+
+
+
 
 @bot.command(aliases=["c4","connectfour"])
-@commands.cooldown(1,30,commands.BucketType.guild)
+@commands.cooldown(1,60,commands.BucketType.member)
 async def connect4(ctx,c4p2m:discord.Member):
 	if c4p2m == ctx.author:
 		await ctx.reply("**You cannot 1v1 yourself.**")
@@ -268,7 +364,14 @@ async def connect4(ctx,c4p2m:discord.Member):
 					if winint == 0 or rgc4 is None or c4NF == 0:
 						break
 				if winint == 0 or rgc4 is None or c4NF == 0:
-					break	
+					break
+
+@bot.command()
+@commands.is_owner()
+async def hp(ctx):
+	hpembed = discord.Embed()
+	hpembed.description = "This country is not supported, you can ask me to add it [here](https://stackoverflow.com/questions/64527464/clickable-link-inside-message-discord-py)."
+	await ctx.send(embed=hpembed)
 
 @bot.command()
 @commands.is_owner()
@@ -282,6 +385,143 @@ async def count(ctx, cnum:int):
 
 
 ##### TEST COMMANDS #####
+
+# @bot.command()
+# async def c4end(ctx):
+# 	liam = ctx.guild.get_member(825376188846571521)
+# 	leadpng = Image.open('leaderboard.png')
+# 	with requests.get(str(ctx.author.avatar)) as pfpurl:
+# 		pfpurldata = pfpurl.content
+# 	with open('pfp.png','wb') as pfp:
+# 		pfp.write(pfpurldata)
+# 	dzpfp = 
+
+
+@bot.command()
+@commands.cooldown(1,30,commands.BucketType.member)
+async def intguess(ctx):
+	igthread = await ctx.message.create_thread(name=f"{ctx.author.name} IntGuessr")
+	await igthread.send(f"**{ctx.author.mention} Welcome to IntGeuss!** The game where you have **20** chances to guess the number I'm thinking of! (**out of `1,000,000`**)")
+	await asyncio.sleep(3)
+	igstart = await igthread.send("**`.......`**")
+	for iga in range(1,6):
+		await igstart.edit(content=f"**`{random.randint(0,1000000)}`**")
+		await asyncio.sleep(0.5)
+	await igstart.edit(content=f"**`.......`**")
+	await asyncio.sleep(2)
+	igans = random.randint(1,1000000)
+	await igstart.edit(content="**I've got my number!** Try and guess it now!")
+	await asyncio.sleep(2)
+	await igstart.edit(content='**In 3....**')
+	await asyncio.sleep(0.5)
+	await igstart.edit(content='**2....**')
+	await asyncio.sleep(0.5)
+	await igstart.edit(content='**1...!**')
+	await asyncio.sleep(0.5)
+	await igstart.edit(content='**Start guessing 1-100! NOW!**')
+	igtries = 0
+	igwin = False
+	for igturns in range(1,21):
+		ignum = False
+		while True:
+			try:
+				ctxguess = await bot.wait_for('message', check=lambda message: message.author == ctx.author, timeout=60)
+				if ctxguess.content.isdigit() and ctxguess.channel == igthread and int(ctxguess.content) <= 1000000:
+					ignum = True
+					break
+			except asyncio.TimeoutError:
+				await igthread.edit(name=f"{ctx.author.name} IntGuessr [Lost, Timed Out]", locked=True)
+				await ctx.send(f"**60 second timeout has reached! The answer was `{igans}`! Game over! {ctx.author.mention}**")
+				igwin = None
+				break
+		if ignum is True:
+			if int(ctxguess.content) == igans:
+				igwin = True
+				igtries = igturns
+				break
+			if abs(igans-int(ctxguess.content)) <= 1000000:
+				igresp = "Off the fucking grid."
+			if abs(igans-int(ctxguess.content)) <= 750000:
+				igresp = "Stone cold. (750k range)"
+			if abs(igans-int(ctxguess.content)) <= 500000:
+				igresp = "Cold. (500k range)"
+			if abs(igans-int(ctxguess.content)) <= 300000:
+				igresp = "Room temperature. (300k range)"
+			if abs(igans-int(ctxguess.content)) <= 100000:
+				igresp = "Warm. (100k range)"
+			if abs(igans-int(ctxguess.content)) <= 50000:
+				igresp = "Warmer.. (50k range)"
+			if abs(igans-int(ctxguess.content)) <= 10000:
+				igresp = "*Hot!* (10k range)"
+			if abs(igans-int(ctxguess.content)) <= 5000:
+				igresp = "*Hotter!* (5k range)"
+			if abs(igans-int(ctxguess.content)) <= 1000:
+				igresp = "*Steaming Hot!* (1k range)"
+			if abs(igans-int(ctxguess.content)) <= 100:
+				igresp = "*__BOILING HOT!__* (100 range)"
+			if igans-int(ctxguess.content) < 0:
+				igdirection = "Lower!"
+			if igans-int(ctxguess.content) > 0:
+				igdirection = "Higher!"
+			await ctxguess.reply(f"**{igdirection}** [ **{igresp}** ] **`{20-igturns} attempts left.`**")
+		if igwin is None:
+			break
+	if igwin is False:
+		await igthread.edit(name=f"{ctx.author.name} IntGuessr [Lost]", locked=True)
+		await igthread.send(f"**Sorry, the answer you were looking for was {igans}! You lose.**")
+	if igwin is True:
+		await igthread.edit(name=f"{ctx.author.name} IntGuessr [Won in {igtries} attempts]", locked=True)
+		await igthread.send(f"**You got it! The answer was `{igans}`! You win! `[Total attempts: {igtries}]`**")
+
+
+
+@bot.command()
+async def fourkay(ctx, gentext=None, member=None):
+	image = Image.new(mode="RGB", size=(1920,540), color=(49,51,56))
+	fontt = ImageFont.truetype('ggmed.ttf', 78)
+	todayfont = ImageFont.truetype('ggmed.ttf', 52)
+	genmem = ctx.author
+	tip = ""
+	if not member is None:
+		if member.startswith('<@'):
+			genmem = ctx.guild.get_member(int(re.search(r'\d+', member).group()))
+		else:
+			if not ctx.guild.get_member_named(member) is None:
+				genmem = ctx.guild.get_member_named(member)
+			else:
+				tip = "**Tip: To include a message with spaces, add it in quotations.\nExample: `!fourkay \"hi, guys\" @person`**"
+	
+	genname = genmem.name
+	if (genmem.nick):
+		genname = genmem.nick
+	if gentext is None:
+		gentext = "Text unavailable"
+	
+	editable = ImageDraw.Draw(image)
+
+	with requests.get(str(genmem.avatar)) as pfpurl:
+		pfpurldata = pfpurl.content
+	with open('pfp.png','wb') as pfp:
+		pfp.write(pfpurldata)
+
+	genpfp = Image.open('pfp.png')
+	genpfp = genpfp.resize((200, 200))
+
+	genmask = Image.new(mode="L", size=genpfp.size, color=0)
+	genmaskd = ImageDraw.Draw(genmask)
+	genmaskd.ellipse((0,0,200,200),fill=255)
+
+	image.paste(im=genpfp, box=(200,170,400,370), mask=genmask)
+	editable.text((480, 160), genname, fill=hex_to_rgb(str(genmem.color)), font=fontt)
+	editable.text((480, 265), gentext, fill=(219,222,225), font=fontt, spacing=25)
+	editable.text((editable.textlength(genname,font=fontt)+523,186), f"Today at {int(datetime.datetime.now().strftime('%I'))}{datetime.datetime.now().strftime(':%M %p')}", fill=(149, 155, 164), font=todayfont)
+	image.save(f"Test.png")
+	await ctx.send(content=tip,file=discord.File(f"Test.png"))
+
+@bot.command()
+async def mn(ctx,  member):
+	print(ctx.guild.get_member_named(member))
+
 
 @bot.command()
 @commands.has_permissions(administrator=True)
