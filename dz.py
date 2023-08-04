@@ -14,15 +14,15 @@ from textblob import TextBlob
 import datetime
 import time
 from traceback import print_exc
-import json
 import re
 from PIL import Image, ImageFont, ImageDraw, ImageOps
 from webcolors import hex_to_rgb
 import urllib.request
-
+from math import *
+from PyDictionary import PyDictionary
+from decimal import *
 
 bot = commands.Bot(command_prefix='!',intents=discord.Intents.all())
-
 
 @bot.event
 async def on_ready():
@@ -32,6 +32,49 @@ async def on_ready():
 	await bot.change_presence(activity=playin, status=discord.Status.idle)
 	dzguild = bot.get_guild(539928737916125184)
 	dzrole = dzguild.get_role(824670964762804284)
+	noxp = dzguild.get_role(1137140154360942624)
+	while True:
+		with open('spamcheck.json','r+',encoding='utf-8') as scraw:
+			sc = json.load(scraw)
+			for a in sc:
+				msga = dzguild.get_member(int(a))
+				spamchan = bot.get_channel(sc[a][1])
+				if sc[a][0] > 3:
+					if msga.top_role.position < 21:
+						def is_msga(m):
+							return m.author == msga
+						await spamchan.purge(limit=sc[a][0], check=is_msga)
+						await spamchan.send(f"**{msga.mention}, please stop spamming the chat <:emojiYawn:552169910130704394> [`{sc[a][0]} messages in 3 seconds.`]**")
+				if not sc[a][0] > 3 and not noxp in msga.roles and str(spamchan.type) == 'text':
+					with open('lvls.json','r+',encoding='utf-8') as lvlsraw:
+						lvls = json.load(lvlsraw)
+						if not str(msga.id) in str(lvls):
+							lvls[str(msga.id)] = [1,25,0]
+							await spamchan.send(f"{msga.mention} <:lvlup:1136150865225449474> **__First Level Up__!  [`{lvls[str(msga.id)][0]}`] `Your XP Boost: {lvls[str(msga.id)][0]/10}%`**")
+						else:
+							xpperc = (lvls[str(msga.id)][0] / 1000) +1
+
+							newxp = (Decimal(str(lvls[str(msga.id)][1])) + (Decimal(str(xpperc))*25))
+							newlvlxp = (Decimal(str(lvls[str(msga.id)][2])) + (Decimal(str(xpperc))*25))
+
+							lvls[str(msga.id)][1] = float(newxp)
+							lvls[str(msga.id)][2] = float(newlvlxp)
+							with open('lvlxpgoals.txt','r') as lxlxpgoalsraw:
+								lxlxpgoals = eval(lxlxpgoalsraw.read())
+								if lvls[str(msga.id)][2] >= lxlxpgoals[lvls[str(msga.id)][0]]:
+									lvls[str(msga.id)][2] = float(Decimal(str(lvls[str(msga.id)][2])) - lxlxpgoals[lvls[str(msga.id)][0]])
+									lvls[str(msga.id)][0]+=1
+									await spamchan.send(f"{msga.mention} <:lvlup:1136150865225449474> **__Level Up__!  [`{lvls[str(msga.id)][0]}`] XP Boost: `{lvls[str(msga.id)][0]/10}%`**")
+						lvlsraw.seek(0)
+						json.dump(lvls, lvlsraw, indent=4)
+						lvlsraw.truncate()
+
+					
+			sc = {}
+			scraw.seek(0)
+			json.dump(sc,scraw,indent=4)
+			scraw.truncate()
+			await asyncio.sleep(3)
 # 	while True:
 # 		await dzrole.edit(color=0xff3c3c)
 # 		await asyncio.sleep(2)
@@ -69,7 +112,7 @@ async def on_command_error(ctx, error):
 	print(error)
 	print(type(error))
 
-@bot.command(aliases=["p"])
+@bot.command(aliases=["p","ms"])
 async def ping(ctx):
 	pin = round(bot.latency*1000)
 	if 0 < pin < 150:
@@ -90,24 +133,21 @@ async def ping(ctx):
 ###############################################################################
 
 
-@bot.command()
-async def tb(ctx, tbarg=None):
-	if tbarg is None:
-		pass
-	elif "<@" in tbarg:
-		for tblet in tbarg:
-			if not tblet.isdigit():
-				tbarg = tbarg.replace(tblet, "")
-	elif tbarg.isdigit() and len(tbarg) > 16:
-		try:
-			tbarg = bot.get_user(int(tbarg))
-			print(tbarg.name)
-		except:
-			print('couldn\'t find user with possible id.')
-	else:
-		tbarg = ctx.guild.get_member_named(tbarg)
-		if tbarg is None:
-			print(f'couldn\'t find member')
+
+
+@bot.command(aliases=['l','lvl','lvls','levels'])
+async def level(ctx):
+	with open('lvls.json','r+',encoding='utf-8') as levelsraw:
+		levels = json.load(levelsraw)
+		if str(ctx.author.id) in str(levels):
+			with open('lvlxpgoals.txt','r') as levelxpgoalsraw:
+				levelxpgoals = eval(levelxpgoalsraw.read())
+				levelembed = discord.Embed(title=f"**{ctx.author.name}**",description=f"**Level `{levels[str(ctx.author.id)][0]}`\nXP: `{round(levels[str(ctx.author.id)][2],1)} / {levelxpgoals[levels[str(ctx.author.id)][0]]}`\nTotal XP: `{round(levels[str(ctx.author.id)][1],1)}`\nYOUR BOOST: `{levels[str(ctx.author.id)][0] / 10}%`**", color=ctx.author.color)
+				levelembed.set_thumbnail(url=ctx.author.avatar)
+				await ctx.reply(embed=levelembed)
+		else:
+			await ctx.reply("**You aren't leveled yet :( Type in chat receive your first level.!**")
+
 
 	# await ctx.reply('<:yellowdollarsignyoutube:1130852475893715105>')
 	# while True:
@@ -135,6 +175,14 @@ async def tb(ctx, tbarg=None):
 # 			print(f"{timerres.min} minutes and {timerres.seconds}.{round(timerres.microseconds/10000)} seconds")
 # 			print(timerres.microseconds)
 # 			break
+
+@bot.command()
+@commands.is_owner()
+async def customsay(ctx):
+	await ctx.send("@everyone")
+	await ctx.send("We're singing Barbie Girl.")
+	await ctx.send("But if any of you screws up...")
+	await ctx.send("You get instantly banned.")
 
 @bot.command()
 @commands.is_owner()
@@ -366,35 +414,27 @@ async def connect4(ctx,c4p2m:discord.Member):
 				if winint == 0 or rgc4 is None or c4NF == 0:
 					break
 
-@bot.command()
-@commands.is_owner()
-async def hp(ctx):
-	hpembed = discord.Embed()
-	hpembed.description = "This country is not supported, you can ask me to add it [here](https://stackoverflow.com/questions/64527464/clickable-link-inside-message-discord-py)."
-	await ctx.send(embed=hpembed)
-
-@bot.command()
-@commands.is_owner()
-async def count(ctx, cnum:int):
-	with open('j.json','r+',encoding='utf-8') as f:
-		data = json.load(f)
-		await ctx.reply(f"The number is now {data['number'][0]['value']+cnum}")
-		data['number'][0]['value']+=cnum
-		f.seek(0)
-		json.dump(data, f, indent=4)
-
 
 ##### TEST COMMANDS #####
 
 # @bot.command()
-# async def c4end(ctx):
-# 	liam = ctx.guild.get_member(825376188846571521)
-# 	leadpng = Image.open('leaderboard.png')
-# 	with requests.get(str(ctx.author.avatar)) as pfpurl:
-# 		pfpurldata = pfpurl.content
-# 	with open('pfp.png','wb') as pfp:
-# 		pfp.write(pfpurldata)
-# 	dzpfp = 
+# async def randomwordletest(ctx):
+# 	dictionary = PyDictionary()
+# 	full = ""
+# 	with open('words.txt','r+') as wordsraw:
+# 		wordslist = eval(wordsraw.read())
+# 		word = random.choice(wordslist)
+# 		full += f"**__{word}__**\n\n"
+# 		for a in dictionary.meaning(word):
+# 			full += f"**{a}**\n"
+# 			definition = 0
+# 			for b in dictionary.meaning(word)[a]:
+# 				definition +=1
+# 				full+=(f"**{definition}:**  {b}\n")
+# 			full += "\n"
+# 	await ctx.send(full)
+
+
 
 
 @bot.command()
@@ -470,6 +510,8 @@ async def intguess(ctx):
 		await igthread.edit(name=f"{ctx.author.name} IntGuessr [Lost]", locked=True)
 		await igthread.send(f"**Sorry, the answer you were looking for was {igans}! You lose.**")
 	if igwin is True:
+		# with open('lvls.json','r+',encoding='utf-8') as levelsraw:
+
 		await igthread.edit(name=f"{ctx.author.name} IntGuessr [Won in {igtries} attempts]", locked=True)
 		await igthread.send(f"**You got it! The answer was `{igans}`! You win! `[Total attempts: {igtries}]`**")
 
@@ -679,7 +721,7 @@ async def embed(ctx):
 
 cogs = [
 	res.Res(bot),
-	mod.StaffCommands(bot)
+	mod.StaffCommands(bot),
 ]
 
 async def setup():

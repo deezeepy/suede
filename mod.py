@@ -51,8 +51,11 @@ class StaffCommands(commands.Cog):
 			ujembede = discord.Embed(description=f"**{member.mention} isn't jailed.**", color=0x00b0ff)
 			await ctx.reply(embed=ujembede)
 
+
 	@commands.command(aliases=['prg'])
 	@commands.has_permissions(administrator=True)
 	async def purge(self, ctx, amount:int, preason='No given reason.'):
-		amount = amount+1
-		await ctx.channel.purge(limit=amount, reason=preason)
+		amount+=1
+		def is_me(m):
+			return not m.author.id == 504072666718797836
+		await ctx.channel.purge(limit=amount, check=is_me,reason=preason)

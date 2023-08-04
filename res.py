@@ -10,13 +10,20 @@ import json
 import random
 from textblob import TextBlob
 import datetime
+from decimal import *
 
 class Res(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
+		self.anti_spam = commands.CooldownMapping.from_cooldown(5,15,commands.BucketType.member)
 
+
+	
 	@commands.Cog.listener()
 	async def on_message(self, message):
+
+		#    AUTOMOD
+
 		bad = ['nigge', 'fag']
 		for bads in bad:
 			if bads in message.content.lower():
@@ -27,8 +34,43 @@ class Res(commands.Cog):
 					pass
 				await message.author.ban()
 				break
-		if 'nigga' in message.content and message.author.id == 717762779590688838:
-			await message.reply(':face_with_raised_eyebrow:')
+		
+		#    LEVELS
+		if not message.author.bot:
+			with open('spamcheck.json','r+',encoding='utf-8') as scraw:
+				sc = json.load(scraw)
+				if str(message.author.id) in str(sc):
+					sc[str(message.author.id)][0]+=1
+				else:
+					sc[str(message.author.id)] = [1]
+					sc[str(message.author.id)].append(message.channel.id)
+				scraw.seek(0)
+				json.dump(sc, scraw, indent=4)
+
+		# 		lvls = json.load(lvlsraw)
+		# 		if not str(message.author.id) in str(lvls):
+		# 			lvls[str(message.author.id)] = [1,25,0]
+		# 			await message.reply(f"<:lvlup:1136150865225449474> **__First Level Up__! [`{lvls[str(message.author.id)][0]}`] `Your XP Boost: {lvls[str(message.author.id)][0]/10}%`**")
+		# 		else:
+		# 			xpperc = (lvls[str(message.author.id)][0] / 1000) +1
+		# 			print(xpperc)
+
+		# 			newxp = (Decimal(str(lvls[str(message.author.id)][1])) + (Decimal(str(xpperc))*25))
+		# 			newlvlxp = (Decimal(str(lvls[str(message.author.id)][2])) + (Decimal(str(xpperc))*25))
+
+		# 			lvls[str(message.author.id)][1] = float(newxp)
+		# 			lvls[str(message.author.id)][2] = float(newlvlxp)
+		# 			with open('lvlxpgoals.txt','r') as lxlxpgoalsraw:
+		# 				lxlxpgoals = eval(lxlxpgoalsraw.read())
+		# 				if lvls[str(message.author.id)][2] >= lxlxpgoals[lvls[str(message.author.id)][0]]:
+		# 					lvls[str(message.author.id)][2] = float(Decimal(str(lvls[str(message.author.id)][2])) - lxlxpgoals[lvls[str(message.author.id)][0]])
+		# 					lvls[str(message.author.id)][0]+=1
+		# 					await message.reply(f"<:lvlup:1136150865225449474> **__Level Up__! [`{lvls[str(message.author.id)][0]}`] XP Boost: `{lvls[str(message.author.id)][0]/10}%`**")
+		# 		lvlsraw.seek(0)
+		# 		json.dump(lvls, lvlsraw, indent=4)
+		# 		lvlsraw.truncate()
+
+
 		# if message.author.bot is False and not message.content.startswith("!"):
 		# 	textmsg = TextBlob(message.content)
 		# 	nice = (round(3+(textmsg.sentiment.polarity*2),1))
@@ -47,13 +89,14 @@ class Res(commands.Cog):
 		# 	print(state + "\n")
 	@commands.Cog.listener()
 	async def on_message_delete(self, message):
-		msgdellogs = self.bot.get_channel(751861618161221792)
-		msgdelnoMDs = ['*', '~', '`', '-', '_']
-		for dellet in message.content:
-			if dellet in msgdelnoMDs:
-				message.content = message.content.replace(dellet, "")
-		msgdelemb = discord.Embed(description=f"**{message.author.mention} had their message deleted  -** {datetime.datetime.now().strftime('**%I**:**%M**:**%S** **%p**')}\n~~```ansi\n[2;31m{message.content}[0m\n```~~", color = 0xff0000)
-		await msgdellogs.send(embed=msgdelemb)
+		if not message.content == '!ping':
+			msgdellogs = self.bot.get_channel(751861618161221792)
+			msgdelnoMDs = ['*', '~', '`', '-', '_']
+			for dellet in message.content:
+				if dellet in msgdelnoMDs:
+					message.content = message.content.replace(dellet, "")
+			msgdelemb = discord.Embed(description=f"**{message.author.mention} had their message deleted  -** {datetime.datetime.now().strftime('**%I**:**%M**:**%S** **%p**')}\n~~```ansi\n[2;31m{message.content}[0m\n```~~", color = 0xff0000)
+			await msgdellogs.send(embed=msgdelemb)
 
 	@commands.Cog.listener()
 	async def on_message_edit(self, before, after):
